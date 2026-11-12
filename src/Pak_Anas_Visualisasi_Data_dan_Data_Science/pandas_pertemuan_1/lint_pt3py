@@ -1,0 +1,548 @@
+# ruff: file-ignore[undocumented-public-init]
+
+"""Praktikum 5: Pembersihan, Transformasi, dan Feature Engineering.
+
+CPMK01: Menerapkan teknik pra-pemrosesan data dalam siklus Data Science.
+Sub-CPMK KB195-1.2: Melakukan cleaning, wrangling, dan feature engineering.
+
+Dataset asli tidak diubah. Keputusan cleaning dicatat secara terstruktur.
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+
+OUTPUT_DIR = Path.cwd()
+DATASET_OUTPUT = OUTPUT_DIR / "titanic_bersih.csv"
+LOG_OUTPUT = OUTPUT_DIR / "titanic_cleaning_log.csv"
+CHART_OUTPUT = OUTPUT_DIR / "perbandingan_sebelum_sesudah.png"
+
+IQR_MULTIPLIER = 1.5
+EXPECTED_SHAPE = (891, 18)
+EXPECTED_LOG_RECORDS = 7
+AGE_BINS = [0, 12, 18, 60, 100]
+AGE_LABELS = ["Anak", "Remaja", "Dewasa", "Lansia"]
+REDUNDANT_COLUMNS = ("class", "alive", "embark_town")
+
+
+class DataValidationError(ValueError):
+	"""Menandakan data tidak memenuhi kontrak validasi."""
+
+
+@dataclass(frozen=True)
+class CleaningRecord:
+	"""Mewakili satu keputusan dalam log cleaning."""
+
+	langkah: str
+	kolom: str
+	masalah: str
+	aksi: str
+	baris_terdampak: int
+	alasan: str
+
+
+class CleaningLog:
+	"""Mengelola catatan keputusan cleaning."""
+
+	def __init__(self) -> None:
+		self.records: list[CleaningRecord] = []
+
+	def add(self, record: CleaningRecord) -> None:
+		"""Tambahkan satu catatan cleaning."""
+		self.records.append(record)
+
+	def to_frame(self) -> pd.DataFrame:
+		"""Konversi catatan cleaning menjadi DataFrame."""
+		return pd.DataFrame(asdict(record) for record in self.records)
+
+
+def make_record(record: CleaningRecord) -> CleaningRecord:
+	"""Kembalikan catatan cleaning yang telah dibentuk."""
+	return record
+
+
+def load_data() -> tuple[pd.DataFrame, pd.DataFrame]:
+	"""Muat dataset Titanic dan buat salinan untuk pemrosesan.
+
+	Raises:
+	    DataValidationError: Jika kolom yang diperlukan tidak tersedia.
+
+	"""
+	original = sns.load_dataset("titanic")
+	required_columns = {
+		"age",
+		"pclass",
+		"sex",
+		"embarked",
+		"deck",
+		"fare",
+		"survived",
+		"sibsp",
+		"parch",
+	}
+	missing_columns = required_columns.difference(original.columns)
+
+	if missing_columns:
+		message = f"Kolom dataset tidak tersedia: {sorted(missing_columns)}"
+		raise DataValidationError(message)
+
+	return original, original.copy()
+
+
+def show_initial_summary(original: pd.DataFrame) -> None:
+	"""Tampilkan kondisi awal dataset."""
+	logging.info("Bentuk data awal: %s", original.shape)
+	logging.info("Nilai kosong per kolom:\n%s", original.isna().sum())
+
+	duplicate_count = int(original.duplicated().sum())
+	duplicate_rows = int(original.duplicated(keep=False).sum())
+	zero_fares = int(original["fare"].eq(0).sum())
+
+	logging.info(
+		"Baris duplikat tambahan: %s; baris dalam kelompok duplikat: %s",
+		duplicate_count,
+		duplicate_rows,
+	)
+	logging.info("Tarif bernilai nol: %s", zero_fares)
+
+
+def inspect_duplicates(data: pd.DataFrame, log: CleaningLog) -> None:
+	"""Periksa baris identik tanpa menghapusnya secara otomatis."""
+	duplicate_count = int(data.duplicated().sum())
+	duplicate_rows = int(data.duplicated(keep=False).sum())
+
+	survival_before = float(data["survived"].mean())
+	survival_without_duplicates = float(data.drop_duplicates()["survived"].mean())
+
+	logging.info(
+		"Baris duplikat tambahan: %s; baris terkait: %s",
+		duplicate_count,
+		duplicate_rows,
+	)
+	logging.info(
+		"Proporsi survived sebelum: %.3f; setelah simulasi drop_duplicates: %.3f",
+		survival_before,
+		survival_without_duplicates,
+	)
+
+	log.add(
+		make_record(
+			CleaningRecord(
+				langkah="duplikat",
+				kolom="semua kolom",
+				masalah=(
+					f"{duplicate_count} baris duplikat tambahan; "
+					f"{duplicate_rows} baris berada dalam kelompok identik"
+				),
+				aksi="tidak menghapus otomatis",
+				baris_terdampak=0,
+				alasan=(
+					"Dataset tidak memiliki ID unik penumpang. "
+					"Baris identik belum tentu mewakili orang yang sama."
+				),
+			),
+		),
+	)
+
+
+def impute_age(data: pd.DataFrame, log: CleaningLog) -> None:
+	"""Isi usia kosong dengan median berdasarkan kelas dan jenis kelamin."""
+	missing_count = int(data["age"].isna().sum())
+	group_median = data.groupby(
+		["pclass", "sex"],
+		observed=True,
+	)["age"].transform("median")
+
+	data["age_imputed"] = data["age"].isna()
+	data["age"] = data["age"].fillna(group_median)
+
+	remaining_missing = int(data["age"].isna().sum())
+	if remaining_missing:
+		overall_median = data["age"].median()
+		data["age"] = data["age"].fillna(overall_median)
+
+	missing_percent = missing_count / len(data)
+
+	log.add(
+		make_record(
+			CleaningRecord(
+				langkah="missing",
+				kolom="age",
+				masalah=f"{missing_count} nilai kosong ({missing_percent:.1%})",
+				aksi="imputasi median kelompok dan median keseluruhan sebagai fallback",
+				baris_terdampak=missing_count,
+				alasan=(
+					"Median relatif tahan terhadap outlier. "
+					"Kelompok kelas dan jenis kelamin digunakan untuk "
+					"mempertahankan perbedaan distribusi usia."
+				),
+			),
+		),
+	)
+
+
+def impute_embarked(data: pd.DataFrame, log: CleaningLog) -> None:
+	"""Isi embarked yang kosong menggunakan kategori modus.
+
+	Raises:
+	    DataValidationError: Jika tidak ada kategori valid untuk imputasi.
+
+	"""
+	missing_count = int(data["embarked"].isna().sum())
+	if missing_count == 0:
+		return
+
+	mode_values = data["embarked"].mode()
+	if mode_values.empty:
+		message = "Imputasi embarked gagal karena tidak ada kategori valid."
+		raise DataValidationError(message)
+
+	mode_value = mode_values.iloc[0]
+	data["embarked"] = data["embarked"].fillna(mode_value)
+
+	log.add(
+		make_record(
+			CleaningRecord(
+				langkah="missing",
+				kolom="embarked",
+				masalah=f"{missing_count} nilai kosong",
+				aksi=f"imputasi dengan modus {mode_value}",
+				baris_terdampak=missing_count,
+				alasan=(
+					"Modus dipilih karena nilai kosong sedikit dan "
+					"kolom embarked merupakan variabel kategorikal."
+				),
+			),
+		),
+	)
+
+
+def process_deck(data: pd.DataFrame, log: CleaningLog) -> pd.DataFrame:
+	"""Buat penanda deck sebelum menghapus kolom dengan banyak nilai kosong."""
+	if "deck" not in data.columns:
+		return data
+
+	missing_count = int(data["deck"].isna().sum())
+	missing_percent = missing_count / len(data)
+
+	cleaned = data.assign(has_deck=data["deck"].notna())
+	cleaned = cleaned.drop(columns=["deck"])
+
+	log.add(
+		make_record(
+			CleaningRecord(
+				langkah="missing",
+				kolom="deck",
+				masalah=(f"{missing_count} nilai kosong ({missing_percent:.1%})"),
+				aksi="hapus deck setelah membuat penanda has_deck",
+				baris_terdampak=missing_count,
+				alasan=(
+					"Proporsi nilai kosong tinggi. "
+					"Penanda has_deck mempertahankan informasi "
+					"apakah data dek tersedia."
+				),
+			),
+		),
+	)
+
+	return cleaned
+
+
+def mark_fare_values(data: pd.DataFrame, log: CleaningLog) -> None:
+	"""Tandai tarif nol tanpa menganggapnya pasti sebagai kesalahan."""
+	zero_count = int(data["fare"].eq(0).sum())
+	data["fare_zero"] = data["fare"].eq(0)
+
+	log.add(
+		make_record(
+			CleaningRecord(
+				langkah="validitas",
+				kolom="fare",
+				masalah=f"{zero_count} tiket memiliki tarif nol",
+				aksi="membuat penanda fare_zero dan mempertahankan nilai",
+				baris_terdampak=zero_count,
+				alasan=(
+					"Tarif nol dapat merupakan kondisi sah atau data "
+					"yang belum tercatat. Perlu klarifikasi sumber data "
+					"sebelum mengubah nilainya."
+				),
+			),
+		),
+	)
+
+
+def remove_redundant_columns(
+	data: pd.DataFrame,
+	log: CleaningLog,
+) -> pd.DataFrame:
+	"""Hapus kolom redundan yang mengulang informasi kolom lain."""
+	columns_to_drop = [column for column in REDUNDANT_COLUMNS if column in data.columns]
+
+	if not columns_to_drop:
+		return data
+
+	cleaned = data.drop(columns=columns_to_drop)
+
+	log.add(
+		make_record(
+			CleaningRecord(
+				langkah="konsistensi",
+				kolom=", ".join(columns_to_drop),
+				masalah="Kolom redundan dengan representasi lain",
+				aksi="menghapus kolom redundan",
+				baris_terdampak=len(cleaned),
+				alasan=(
+					"Kolom tersebut mengulang informasi kelas, "
+					"status keselamatan, atau pelabuhan keberangkatan."
+				),
+			),
+		),
+	)
+
+	return cleaned
+
+
+def transform_fare(data: pd.DataFrame, log: CleaningLog) -> None:
+	"""Deteksi outlier IQR dan buat transformasi log tarif."""
+	quantiles = data["fare"].quantile([0.25, 0.75])
+	q1 = float(quantiles.loc[0.25])
+	q3 = float(quantiles.loc[0.75])
+	iqr = q3 - q1
+	upper_bound = q3 + IQR_MULTIPLIER * iqr
+	outlier_count = int(data["fare"].gt(upper_bound).sum())
+
+	data["fare_log"] = np.log1p(data["fare"])
+
+	original_skew = float(data["fare"].skew())
+	transformed_skew = float(data["fare_log"].skew())
+
+	logging.info(
+		"IQR fare: Q1=%.4f, Q3=%.4f, IQR=%.4f, batas atas=%.4f",
+		q1,
+		q3,
+		iqr,
+		upper_bound,
+	)
+	logging.info("Jumlah outlier tarif: %s", outlier_count)
+	logging.info(
+		"Skewness fare: %.2f; skewness fare_log: %.2f",
+		original_skew,
+		transformed_skew,
+	)
+
+	log.add(
+		make_record(
+			CleaningRecord(
+				langkah="outlier",
+				kolom="fare",
+				masalah=f"{outlier_count} nilai melampaui batas atas IQR",
+				aksi="mempertahankan tarif dan membuat fitur fare_log",
+				baris_terdampak=outlier_count,
+				alasan=(
+					"Tarif tinggi tidak selalu salah. "
+					"Transformasi log mengurangi kemencengan tanpa "
+					"menghilangkan observasi yang mungkin valid."
+				),
+			),
+		),
+	)
+
+
+def engineer_features(
+	data: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+	"""Buat fitur turunan, encoding kategorikal, dan penskalaan usia.
+
+	Raises:
+	    DataValidationError: Jika penskalaan tidak dapat dilakukan.
+
+	"""
+	engineered = data.copy()
+
+	engineered["family_size"] = engineered["sibsp"] + engineered["parch"] + 1
+
+	engineered["age_group"] = pd.cut(
+		engineered["age"],
+		bins=AGE_BINS,
+		labels=AGE_LABELS,
+		include_lowest=True,
+	)
+
+	encoded = pd.get_dummies(
+		engineered[["sex", "embarked"]],
+		drop_first=True,
+		dtype=int,
+	)
+	encoded = encoded.rename(columns=lambda column: column.replace(" ", "_"))
+
+	age_min = float(engineered["age"].min())
+	age_max = float(engineered["age"].max())
+
+	if age_max == age_min:
+		message = "Penskalaan usia gagal karena semua nilai usia sama."
+		raise DataValidationError(message)
+
+	engineered["age_scaled"] = (engineered["age"] - age_min) / (age_max - age_min)
+
+	return engineered, encoded
+
+
+def summarize_changes(
+	original: pd.DataFrame,
+	cleaned: pd.DataFrame,
+) -> pd.DataFrame:
+	"""Bandingkan ukuran data sebelum dan sesudah cleaning."""
+	metrics = {
+		"jumlah baris": [
+			len(original),
+			len(cleaned),
+		],
+		"age kosong": [
+			int(original["age"].isna().sum()),
+			int(cleaned["age"].isna().sum()),
+		],
+		"rata-rata age": [
+			round(float(original["age"].mean()), 2),
+			round(float(cleaned["age"].mean()), 2),
+		],
+		"jumlah kolom": [
+			original.shape[1],
+			cleaned.shape[1],
+		],
+	}
+
+	return pd.DataFrame(
+		metrics,
+		index=["sebelum", "sesudah"],
+	).T
+
+
+def plot_missing_age(
+	original: pd.DataFrame,
+	cleaned: pd.DataFrame,
+	output: Path,
+) -> None:
+	"""Buat grafik perbandingan jumlah usia kosong."""
+	counts = pd.Series(
+		{
+			"Sebelum": int(original["age"].isna().sum()),
+			"Sesudah": int(cleaned["age"].isna().sum()),
+		},
+		name="Jumlah nilai age kosong",
+	)
+
+	axis = counts.plot(
+		kind="bar",
+		title="Perbandingan Nilai Usia Kosong",
+	)
+	axis.set_xlabel("Kondisi data")
+	axis.set_ylabel("Jumlah baris")
+	axis.tick_params(axis="x", rotation=0)
+	axis.bar_label(axis.containers[0])
+	axis.figure.tight_layout()
+	axis.figure.savefig(output, dpi=150)
+	plt.close(axis.figure)
+
+
+def validate_output(
+	data: pd.DataFrame,
+	log: CleaningLog,
+) -> None:
+	"""Validasi bentuk data, jumlah log, dan kelengkapan usia.
+
+	Raises:
+	    DataValidationError: Jika hasil tidak sesuai kontrak praktikum.
+
+	"""
+	if data.shape != EXPECTED_SHAPE:
+		message = (
+			f"Bentuk data tidak sesuai: diperoleh {data.shape}; "
+			f"target modul {EXPECTED_SHAPE}."
+		)
+		raise DataValidationError(message)
+
+	if len(log.records) != EXPECTED_LOG_RECORDS:
+		message = (
+			f"Jumlah catatan log tidak sesuai: diperoleh {len(log.records)}; "
+			f"target modul {EXPECTED_LOG_RECORDS}."
+		)
+		raise DataValidationError(message)
+
+	missing_age = int(data["age"].isna().sum())
+	if missing_age:
+		message = (
+			f"Imputasi belum lengkap: masih terdapat {missing_age} nilai age kosong."
+		)
+		raise DataValidationError(message)
+
+
+def save_outputs(
+	data: pd.DataFrame,
+	log: CleaningLog,
+) -> None:
+	"""Simpan dataset bersih dan log cleaning ke CSV."""
+	data.to_csv(DATASET_OUTPUT, index=False)
+	log.to_frame().to_csv(LOG_OUTPUT, index=False)
+
+	logging.info("Dataset tersimpan: %s", DATASET_OUTPUT)
+	logging.info("Log cleaning tersimpan: %s", LOG_OUTPUT)
+
+
+def main() -> None:
+	"""Jalankan seluruh tahapan praktikum secara berurutan."""
+	logging.basicConfig(
+		level=logging.INFO,
+		format="%(levelname)s: %(message)s",
+	)
+
+	original, data = load_data()
+	log = CleaningLog()
+
+	show_initial_summary(original)
+	inspect_duplicates(data, log)
+	impute_age(data, log)
+	impute_embarked(data, log)
+
+	data = process_deck(data, log)
+	mark_fare_values(data, log)
+	data = remove_redundant_columns(data, log)
+	transform_fare(data, log)
+
+	data, encoded = engineer_features(data)
+
+	summary = summarize_changes(original, data)
+	logging.info("Perbandingan sebelum-sesudah:\n%s", summary)
+
+	family_counts = data["family_size"].value_counts().sort_index()
+	logging.info("Distribusi family_size:\n%s", family_counts)
+
+	age_summary = data.groupby(
+		"age_group",
+		observed=True,
+	)["survived"].agg(["count", "mean"])
+	logging.info("Proporsi survived per kelompok usia:\n%s", age_summary.round(3))
+
+	logging.info("Kolom hasil encoding: %s", list(encoded.columns))
+	logging.info(
+		"Rentang age_scaled: %.1f sampai %.1f",
+		data["age_scaled"].min(),
+		data["age_scaled"].max(),
+	)
+
+	validate_output(data, log)
+	plot_missing_age(original, data, CHART_OUTPUT)
+	save_outputs(data, log)
+
+	logging.info("Grafik tersimpan: %s", CHART_OUTPUT)
+	logging.info("Jumlah catatan log: %s", len(log.records))
+
+
+if __name__ == "__main__":
+	main()

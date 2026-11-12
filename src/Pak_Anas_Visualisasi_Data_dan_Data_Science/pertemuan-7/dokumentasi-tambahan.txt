@@ -1,0 +1,11 @@
+uv add plotly streamlit
+
+# Ruff cek
+uv run ruff check src/Pak_Anas_Visualisasi_Data_dan_Data_Science/pertemuan-7/App.py
+uv run ruff check src/Pak_Anas_Visualisasi_Data_dan_Data_Science/pertemuan-7/
+
+# Ruff Aut Format
+uv run ruff format src/Pak_Anas_Visualisasi_Data_dan_Data_Science/pertemuan-7/app.py
+
+# Run Streamlit
+uv run streamlit run src/Pak_Anas_Visualisasi_Data_dan_Data_Science/pertemuan-7/app.py

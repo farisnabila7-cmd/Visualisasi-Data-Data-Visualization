@@ -1,0 +1,12 @@
+Buat env scope isolated dengan .venv:
+    1. python -m venv --system-site-packages .venv
+
+aktifkan .venv:
+    1. source .venv/bin/activate
+    2. deactivate
+
+        Tanda aktif akan ada flag (.venv)
+
+
+
+

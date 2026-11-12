@@ -1,0 +1,5 @@
+# Cek lokasi config yang sedang dipakai
+    ruff check --show-settings . --output-format concise
+    # di bawah ini menghilangkan warning 'ann'
+        ruff check --isolated --show-settings .
+

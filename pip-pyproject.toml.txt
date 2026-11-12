@@ -1,0 +1,246 @@
+# ===================================================================================================
+# Ruff
+# ===================================================================================================
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+preview = true
+
+# ── [UPDATE] FOKUSKAN AKAR PEMINDAIAN KE FOLDER SRC ──────────────────
+# Mengarahkan ruff untuk mencari source code utama di dalam folder src
+src = ["src"]
+
+exclude = [
+    ".git-submodules",
+    ".cache",
+    ".ipynb_checkpoints",
+    "_build",
+]
+
+# ===================================================================================================
+# Ruff Lint
+# ===================================================================================================
+
+[tool.ruff.lint]
+
+# Baseline agresif:
+# aktifkan seluruh rule Ruff yang tersedia untuk konfigurasi ini.
+select = ["ALL"]
+
+ignore = [
+    # -----------------------------------------------------------------------------------------------
+    # Docstring conflicts
+    # -----------------------------------------------------------------------------------------------
+
+    # D211 vs D203: keduanya merupakan style yang saling bertentangan.
+    "incorrect-blank-line-before-class",
+
+    # D212 vs D213: pilih satu convention untuk multi-line docstring summary.
+    "multi-line-summary-second-line",
+
+    # -----------------------------------------------------------------------------------------------
+    # Ruff formatter conflicts
+    # -----------------------------------------------------------------------------------------------
+
+    # Formatter menangani trailing comma.
+    "missing-trailing-comma",
+
+    # Formatter menangani implicit string concatenation formatting.
+    "single-line-implicit-string-concatenation",
+
+    # Formatter menggunakan tab indentation.
+    "tab-indentation",
+
+    # Docstring indentation tidak boleh bertentangan dengan formatter tab.
+    "docstring-tab-indentation",
+
+    "docstring-missing-returns",
+
+    # -----------------------------------------------------------------------------------------------
+    # Annotation exceptions
+    # -----------------------------------------------------------------------------------------------
+
+    # Self/cls tidak wajib diberi annotation.
+    "missing-type-self",
+    "missing-type-cls",
+
+    # -----------------------------------------------------------------------------------------------
+    # TODO/FIXME policy
+    # -----------------------------------------------------------------------------------------------
+
+    # TODO/FIXME tidak diperlakukan sebagai lint error.
+    # Hapus baris ini jika TODO harus menjadi error.
+    "missing-todo-author",
+    "missing-todo-link",
+
+    # src/ bukan Python package
+	"implicit-namespace-package",
+    # copyright notice tidak diperlukan
+	"missing-copyright-notice",
+    # print memang digunakan untuk CLI
+	"print",
+    # random aman untuk game non-kriptografi
+	"suspicious-non-cryptographic-random-usage",
+]
+
+# ===================================================================================================
+# Per-file lint exceptions
+# ===================================================================================================
+
+[tool.ruff.lint.per-file-ignores]
+
+# Test code tetap dilint.
+#
+# Yang dikecualikan:
+# S101  -> penggunaan assert dalam test
+# ANN   -> annotation requirement untuk test
+"tests/**/*.py" = [
+    "assert",
+    "ANN",
+]
+
+# ===================================================================================================
+# Import sorting
+# ===================================================================================================
+
+[tool.ruff.lint.isort]
+# HANYA gunakan ini jika "Pak_Anas" memang package/module Python
+# yang benar-benar dapat di-import.
+#
+# Jika project Anda belum memiliki package bernama Pak_Anas,
+# hapus baris ini.
+# known-first-party = ["Pak_Anas"]
+
+# ── [UPDATE] SUPAYA IMPORT LOKAL DI DALAM SRC TERDETEKSI ──────────────
+# Jika Anda melakukan "from src.utils import xxx", ini akan dianggap sebagai kode lokal
+known-first-party = ["src", "Pak_Anas"]
+
+
+# Gabungkan:
+# from foo import a
+# from foo import b
+#
+# menjadi:
+# from foo import a, b
+combine-as-imports = true
+
+# Hormati trailing comma ketika menentukan bentuk multiline import.
+split-on-trailing-comma = true
+
+# ===================================================================================================
+# Ruff Formatter
+# ===================================================================================================
+
+[tool.ruff.format]
+
+# Double quotes
+quote-style = "double"
+
+# Menggunakan TAB untuk indentation.
+indent-style = "tab"
+
+# Gunakan LF pada semua platform.
+line-ending = "lf"
+
+# Pertahankan / gunakan magic trailing comma sesuai formatter.
+skip-magic-trailing-comma = false
+
+# Format contoh kode Python yang berada di docstring.
+docstring-code-format = true
+
+# Panjang baris untuk kode Python di dalam docstring.
+docstring-code-line-length = 80
+
+# Gunakan formatter preview.
+preview = true
+
+# ===================================================================================================
+# ty — Python environment
+# ===================================================================================================
+# [tool.pyrefly]
+
+# python-interpreter-path = ".venv/bin/python.exe"
+[tool.ty.environment]
+# Python yang digunakan project
+# python-version = "3.14"
+
+# [UPDATE MUTLAK] Memaksa Ty menggunakan biner Python .venv Anda untuk mencari site-packages/Pandas
+# python-executable = ".venv/bin/python.exe"
+# Python versi target analisis
+python-version = "3.14"
+
+# [FIXED] Menggunakan field 'python' resmi untuk mendaftarkan biner lokal Anda
+# python = "/ucrt64/bin/python3.exe"
+
+# ===================================================================================================
+# ty — Type checking rules
+# ===================================================================================================
+
+[tool.ty.rules]
+
+# ---------------------------------------------------------------------------------------------------
+# Strict / correctness rules
+# ---------------------------------------------------------------------------------------------------
+
+dynamic-function-decorator-return = "error"
+missing-type-argument = "error"
+possibly-unresolved-reference = "error"
+unsound-return-statement = "error"
+
+# Runtime correctness
+division-by-zero = "error"
+call-non-callable = "error"
+
+# Declaration consistency
+conflicting-declarations = "error"
+conflicting-metaclass = "error"
+
+# Dataclass correctness
+dataclass-field-order = "error"
+
+# API correctness
+deprecated = "error"
+
+# Protocol correctness
+ambiguous-protocol-member = "error"
+
+# Prevent blanket suppression:
+#
+# BAD:
+#     # ty: ignore
+#
+# GOOD:
+#     # ty: ignore[rule-name]
+blanket-ignore-comment = "error"
+
+# ---------------------------------------------------------------------------------------------------
+# Dependency / external typing
+# ---------------------------------------------------------------------------------------------------
+
+# External packages without usable typing information should not immediately
+# block the project.
+#
+# Change these to "error" once every dependency has reliable typing metadata.
+unresolved-import = "warn"
+unresolved-attribute = "warn"
+
+# ===================================================================================================
+# ty — Analysis behavior
+# ===================================================================================================
+
+[tool.ty.analysis]
+
+# Require compatible equality semantics.
+strict-equality-semantics = true
+
+# Use strict generic narrowing behavior.
+strict-generic-narrowing = true
+
+# Respect standard Python type: ignore comments.
+respect-type-ignore-comments = true
+
+[dependency-groups]
+dev = [
+    "pandera>=0.33.1",
+]

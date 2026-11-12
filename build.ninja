@@ -1,0 +1,29 @@
+# Pak_Anas - Ninja build configuration
+
+python = .venv/bin/python.exe
+ruff = /ucrt64/bin/ruff.exe
+ty = /ucrt64/bin/ty.exe
+
+rule run_python
+  command = $python $in
+  description = PYTHON $in
+
+rule ruff_check
+  command = $ruff check src/
+  description = RUFF CHECK
+
+rule ty_check
+  command = $ty check src/
+  description = TY CHECK
+
+rule ruff_fix
+  command = $ruff check --fix src/ && $ruff format src/
+  description = RUFF FIX + FORMAT
+
+build start: run_python src/main.py
+build ruff-check: ruff_check
+build ty-check: ty_check
+build check: phony ruff-check ty-check
+build fix: ruff_fix
+
+default check

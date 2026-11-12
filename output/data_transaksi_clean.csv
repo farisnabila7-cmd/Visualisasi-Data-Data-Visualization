@@ -1,0 +1,9 @@
+Invoice_ID,Tanggal_Order,Customer_ID,Kategori,Harga_Str,Jumlah,Kota_Toko,Harga,Is_Negative_Quantity,Month,Day_of_Week,Jumlah_Missing,Total_Pendapatan
+INV-101,2026-01-02,C-881,Elektronik,Rp 4.500.000,1.0,Jakarta,4500000,False,1,Friday,False,4500000.0
+INV-102,2026-01-03,C-102,Fashion,Rp 250.000,3.0,Bandung,250000,False,1,Saturday,False,750000.0
+INV-103,2026-01-05,Unknown,Elektronik,Rp 120.000,5.0,Surabaya,120000,False,1,Monday,False,600000.0
+INV-104,2026-01-08,C-102,Rumah Tangga,Rp 600.000,-2.0,Jakarta,600000,True,1,Thursday,False,-1200000.0
+INV-106,2026-01-12,C-881,Elektronik,Rp 4.500.000,1.0,Medan,4500000,False,1,Monday,False,4500000.0
+INV-107,2026-01-15,C-512,Rumah Tangga,Rp 150.000,3.0,Bandung,150000,False,1,Thursday,False,450000.0
+INV-108,2026-01-18,C-204,Fashion,Rp 500.000,,Surabaya,500000,False,1,Sunday,True,
+INV-110,2026-01-22,C-301,Kecantikan,Rp 85.000,10.0,Unknown,85000,False,1,Thursday,False,850000.0

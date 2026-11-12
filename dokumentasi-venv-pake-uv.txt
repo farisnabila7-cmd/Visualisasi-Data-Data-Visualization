@@ -1,0 +1,33 @@
+# install
+    uv venv --python 3.14
+
+# cara aktivasinya beda:
+    source .venv/Scripts/activate
+
+# disini ada yang bisa dilakukan better than pip, seperti contoh install panddera
+# uv menginstall pandera dengan sangat cepat dan berhasil, sedangkan pip dengan cacatnya
+    # ada dua metode
+        1. uv add nama-paket
+        2. uv pip install nama-paket
+    # contoh pakai uv tapi pake pip agak aneh si emang tolol
+    uv pip install pandera
+        (Pak_Anas) ( UCRT64 )faris@nabila:~/projects/python/pandas/Pak_Anas$ uv pip install pandera
+        Resolved 10 packages in 1.87s
+        Prepared 7 packages in 6.31s
+        Installed 10 packages in 742ms
+        + annotated-types==0.8.0
+        + mypy-extensions==1.1.0
+        + packaging==26.3
+        + pandera==0.33.1
+        + pydantic==2.13.5
+        + pydantic-core==2.46.5
+        + typeguard==4.6.0
+        + typing-extensions==4.16.0
+        + typing-inspect==0.9.0
+        + typing-inspection==0.4.4
+        (Pak_Anas) ( UCRT64 )faris@nabila:~/projects/python/pandas/Pak_Anas$
+
+# helper "uv memiliki init"
+    uv init --help
+    uv init
+        # akan muncul 2 fil minimal .python-version dan pyproject.toml

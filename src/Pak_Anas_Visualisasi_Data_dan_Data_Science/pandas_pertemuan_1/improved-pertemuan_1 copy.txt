@@ -1,0 +1,554 @@
+# import pandera.pandas as pa  # ruff: ignore[commented-out-code, undocumented-public-module]
+
+import numpy as np
+import json
+import re
+import seaborn as sns
+
+from io import StringIO
+from pathlib import Path
+
+import logging
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
+from itables import show
+
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+OUTPUT_DIR = BASE_DIR / "output"
+LOG_DIR = BASE_DIR / "logs"
+
+OUTPUT_FILE = OUTPUT_DIR / "data_transaksi_clean.csv"
+LOG_FILE = LOG_DIR / "data_cleaning.log"
+
+SEPARATOR = "========================================"
+
+
+# ============================================================
+# MOCK DATA
+# ============================================================
+
+MOCK_DATA = """Invoice_ID,Tanggal_Order,Customer_ID,Kategori,Harga_Str,Jumlah,Kota_Toko
+INV-101,2026-01-02,C-881,Elektronik,"Rp 4.500.000",1,Jakarta
+INV-102,03/01/2026,C-102,Fashion,"Rp 250.000",3,Bandung
+INV-103,2026-01-05,,Elektronik,"Rp 120.000",5,Surabaya
+INV-104,2026-01-08,C-102,Rumah Tangga,"Rp 600.000",-2,JAKARTA
+INV-105,,C-409,Fashion,"Rp 350.000",2,Yogyakarta
+INV-106,2026-01-12,C-881,elektronik,"Rp 4.500.000",1,Medan
+INV-107,2026-01-15,C-512,Rumah Tangga,"Rp 150.000",3,bandung
+INV-108,2026-01-18,C-204,Fashion,"Rp 500.000",Missing,Surabaya
+INV-101,2026-01-02,C-881,Elektronik,"Rp 4.500.000",1,Jakarta
+INV-110,2026-01-22,C-301,Kecantikan,"Rp 85.000",10,
+"""
+
+
+# ============================================================
+# PREPARATION & LOGGING
+# ============================================================
+
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger.handlers.clear()
+
+file_handler = logging.FileHandler(
+	LOG_FILE,
+	encoding="utf-8",
+)
+
+formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
+
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+
+
+# ============================================================
+# LOAD DATA
+# ============================================================
+
+df = pd.read_csv(
+	StringIO(MOCK_DATA),
+	dtype={
+		"Invoice_ID": "string",
+		"Customer_ID": "string",
+		"Kategori": "string",
+		"Harga_Str": "string",
+		"Kota_Toko": "string",
+	},
+)
+
+logger.info("Mock data berhasil dimuat.")
+logger.info("Shape awal: %s", df.shape)
+
+
+# ============================================================
+# 1. HEAD
+# ============================================================
+
+print("\n===== HEAD =====")
+print(df.head())
+
+
+# ============================================================
+# 2. SHAPE
+# ============================================================
+
+print("\n===== SHAPE =====")
+print(df.shape)
+
+
+# ============================================================
+# 3. DATA TYPES
+# ============================================================
+
+print("\n===== DATA TYPES =====")
+print(df.dtypes)
+
+
+# ============================================================
+# 4. INFO
+# ============================================================
+
+print("\n===== INFO =====")
+df.info()
+
+
+# ============================================================
+# 5. MISSING VALUES
+# ============================================================
+
+print("\n===== MISSING VALUES =====")
+print(df.isna().sum())
+
+
+# ============================================================
+# 6. DUPLICATES
+# ============================================================
+
+print("\n===== DUPLICATES =====")
+
+duplicate_count = int(df.duplicated().sum())
+
+print(f"Jumlah exact duplicate: {duplicate_count}")
+
+
+# ============================================================
+# 7. CLEAN HARGA
+# ============================================================
+
+df["Harga"] = (
+	df["Harga_Str"]
+	.astype("string")
+	.str.replace("Rp", "", regex=False)
+	.str.replace(".", "", regex=False)
+	.str.strip()
+)
+
+df["Harga"] = pd.to_numeric(
+	df["Harga"],
+	errors="coerce",
+)
+
+print("\n===== HARGA =====")
+print(df[["Harga_Str", "Harga"]])
+
+print("\nTipe data Harga:")
+print(df["Harga"].dtype)
+
+
+# ============================================================
+# 8. CLEAN JUMLAH
+# ============================================================
+
+df["Jumlah"] = pd.to_numeric(
+	df["Jumlah"],
+	errors="coerce",
+)
+
+print("\n===== JUMLAH =====")
+print(df[["Invoice_ID", "Jumlah"]])
+
+print("\nTipe data Jumlah:")
+print(df["Jumlah"].dtype)
+
+
+# ============================================================
+# 9. PARSING TANGGAL
+# ============================================================
+
+tanggal = df["Tanggal_Order"].astype("string").str.strip()
+
+mask_iso = tanggal.str.match(
+	r"^\d{4}-\d{2}-\d{2}$",
+	na=False,
+)
+
+mask_dmy = tanggal.str.match(
+	r"^\d{2}/\d{2}/\d{4}$",
+	na=False,
+)
+
+df.loc[mask_iso, "Tanggal_Order"] = pd.to_datetime(
+	tanggal[mask_iso],
+	format="%Y-%m-%d",
+	errors="coerce",
+)
+
+df.loc[mask_dmy, "Tanggal_Order"] = pd.to_datetime(
+	tanggal[mask_dmy],
+	format="%d/%m/%Y",
+	errors="coerce",
+)
+
+df["Tanggal_Order"] = pd.to_datetime(
+	df["Tanggal_Order"],
+	errors="coerce",
+)
+
+print("\n===== TANGGAL =====")
+print(
+	df[
+		[
+			"Invoice_ID",
+			"Tanggal_Order",
+		]
+	],
+)
+
+print("\nTipe data Tanggal_Order:")
+print(df["Tanggal_Order"].dtype)
+
+
+# ============================================================
+# 10. STANDARDISASI KOTA
+# ============================================================
+
+df["Kota_Toko"] = df["Kota_Toko"].astype("string").str.strip().str.title()
+
+print("\n===== KOTA =====")
+print(df["Kota_Toko"].value_counts(dropna=False))
+
+
+# ============================================================
+# 11. STANDARDISASI KATEGORI
+# ============================================================
+
+df["Kategori"] = df["Kategori"].astype("string").str.strip().str.title()
+
+print("\n===== KATEGORI =====")
+print(df["Kategori"].value_counts(dropna=False))
+
+
+# ============================================================
+# 12. MISSING SEBELUM CLEANING
+# ============================================================
+
+print("\n===== MISSING SEBELUM CLEANING =====")
+print(df.isna().sum())
+
+
+# ============================================================
+# 13. HANDLE MISSING TANGGAL
+# ============================================================
+
+rows_before = len(df)
+
+df = df.dropna(subset=["Tanggal_Order"]).copy()
+
+rows_deleted = rows_before - len(df)
+
+logger.info(
+	"Rows dihapus karena Tanggal_Order kosong: %s",
+	rows_deleted,
+)
+
+
+# ============================================================
+# 14. HANDLE EXACT DUPLICATES
+# ============================================================
+
+print("\n===== EXACT DUPLICATES =====")
+
+duplicates = df[df.duplicated(keep=False)].copy()
+
+print(duplicates)
+
+if not duplicates.empty:
+	print("\nInvoice_ID yang duplikat:")
+	print(duplicates["Invoice_ID"].tolist())
+
+rows_before = len(df)
+
+df = df.drop_duplicates(keep="first").copy()
+
+duplicates_deleted = rows_before - len(df)
+
+logger.info(
+	"Exact duplicate dihapus: %s",
+	duplicates_deleted,
+)
+
+
+# ============================================================
+# 15. DETEKSI NEGATIVE QUANTITY
+# ============================================================
+
+print("\n===== NEGATIVE QUANTITY =====")
+
+negative_quantity = df[df["Jumlah"] < 0].copy()
+
+print(
+	negative_quantity[
+		[
+			"Invoice_ID",
+			"Customer_ID",
+			"Jumlah",
+		]
+	],
+)
+
+df["Is_Negative_Quantity"] = df["Jumlah"] < 0
+
+
+# ============================================================
+# 16. TIME FEATURES
+# ============================================================
+
+df["Month"] = df["Tanggal_Order"].dt.month  # pyrefly: ignore[missing-attribute]
+
+df["Day_of_Week"] = df["Tanggal_Order"].dt.day_name()  # pyrefly: ignore[missing-attribute]
+
+print("\n===== TIME FEATURES =====")
+print(
+	df[
+		[
+			"Invoice_ID",
+			"Tanggal_Order",
+			"Month",
+			"Day_of_Week",
+		]
+	],
+)
+
+
+# ============================================================
+# 17. HANDLE MISSING CITY
+# ============================================================
+
+df["Kota_Toko"] = df["Kota_Toko"].fillna("Unknown")
+
+
+# ============================================================
+# 18. FEATURE ENGINEERING
+# ============================================================
+
+df["Total_Pendapatan"] = df["Harga"] * df["Jumlah"]
+
+print("\n===== TOTAL PENDAPATAN =====")
+print(
+	df[
+		[
+			"Invoice_ID",
+			"Harga",
+			"Jumlah",
+			"Is_Negative_Quantity",
+			"Total_Pendapatan",
+		]
+	],
+)
+
+
+# ============================================================
+# 19. NET REVENUE
+# ============================================================
+
+net_revenue = df["Total_Pendapatan"].sum()
+
+print("\n===== NET REVENUE =====")
+print(f"Net Revenue: Rp {net_revenue:,.0f}")
+
+
+# ============================================================
+# 20. GROSS VS REFUND
+# ============================================================
+
+gross = df.loc[df["Jumlah"] > 0].groupby("Kategori")["Total_Pendapatan"].sum()
+
+refund = df.loc[df["Jumlah"] < 0].groupby("Kategori")["Total_Pendapatan"].sum()
+
+kategori_summary = pd.DataFrame({
+	"Gross": gross,
+	"Refund": refund,
+}).fillna(0)
+
+print("\n===== GROSS VS REFUND =====")
+print(kategori_summary)
+
+
+# ============================================================
+# 21. MISSING QUANTITY
+# ============================================================
+
+df["Jumlah_Missing"] = df["Jumlah"].isna()
+
+print("\n===== MISSING QUANTITY =====")
+print(
+	df[df["Jumlah_Missing"]][
+		[
+			"Invoice_ID",
+			"Kategori",
+			"Jumlah",
+			"Jumlah_Missing",
+		]
+	],
+)
+
+
+# ============================================================
+# 22. FINAL DATA TYPES
+# ============================================================
+
+print("\n===== FINAL DATA TYPES =====")
+print(df.dtypes)
+
+
+# ============================================================
+# 23. FINAL MISSING VALUES
+# ============================================================
+
+print("\n===== FINAL MISSING VALUES =====")
+print(df.isna().sum())
+
+
+# ============================================================
+# 24. FINAL DUPLICATES
+# ============================================================
+
+print("\n===== FINAL DUPLICATES =====")
+
+final_duplicate_count = int(df.duplicated().sum())
+
+print(f"Jumlah exact duplicate: {final_duplicate_count}")
+
+
+# ============================================================
+# 25. VALIDATION
+# ============================================================
+
+if not pd.api.types.is_numeric_dtype(df["Harga"]):
+	error_message = "Harga harus numeric."
+	raise TypeError(error_message)
+
+if not pd.api.types.is_numeric_dtype(df["Jumlah"]):
+	error_message = "Jumlah harus numeric."
+	raise TypeError(error_message)
+
+if not pd.api.types.is_datetime64_any_dtype(df["Tanggal_Order"]):
+	error_message = "Tanggal_Order harus datetime."
+	raise TypeError(error_message)
+
+if df.duplicated().any():
+	error_message = "Masih terdapat exact duplicate."
+	raise ValueError(error_message)
+
+
+# ============================================================
+# 26. SAVE CLEAN DATA
+# ============================================================
+
+df.to_csv(
+	OUTPUT_FILE,
+	index=False,
+	encoding="utf-8",
+)
+
+logger.info(
+	"Clean dataset disimpan: %s",
+	OUTPUT_FILE,
+)
+
+
+# ============================================================
+# 27. FINAL OUTPUT
+# ============================================================
+
+print(f"\n{SEPARATOR}")
+print("FINAL CLEAN DATA")
+print(SEPARATOR)
+
+print(df)
+
+print("\nShape akhir:")
+print(df.shape)
+
+print("\nKolom:")
+print(df.columns.tolist())
+
+print("\nData types:")
+print(df.dtypes)
+
+print("\nMissing values:")
+print(df.isna().sum())
+
+
+# ============================================================
+# 28. INTERACTIVE TABLE
+# ============================================================
+
+print(f"\n{SEPARATOR}")
+print("INTERACTIVE TABLE")
+print(SEPARATOR)
+
+show(df)
+
+
+# ============================================================
+# 29. VISUALISASI
+# ============================================================
+
+print(f"\n{SEPARATOR}")
+print("VISUALISASI GROSS VS REFUND")
+print(SEPARATOR)
+
+ax = kategori_summary.plot(
+	kind="bar",
+	figsize=(10, 6),
+)
+
+ax.set_title("Gross Revenue vs Refund per Kategori")
+
+ax.set_xlabel("Kategori")
+
+ax.set_ylabel("Pendapatan (Rp)")
+
+ax.legend(title="Jenis Pendapatan")
+
+plt.xticks(rotation=0)
+
+plt.tight_layout()
+
+plt.show()
+
+
+# ============================================================
+# 30. SELESAI
+# ============================================================
+
+print(f"\n{SEPARATOR}")
+print("DATA CLEANING SELESAI")
+print(SEPARATOR)
+
+print(f"Clean CSV : {OUTPUT_FILE}")
+
+print(f"Log file  : {LOG_FILE}")
+
+print(f"Net Revenue: Rp {net_revenue:,.0f}")

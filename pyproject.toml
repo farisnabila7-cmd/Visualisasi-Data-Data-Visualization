@@ -1,0 +1,126 @@
+[project]
+name = "pak-anas-y-bu-risqiati"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+	"ipython>=9.17.1",
+	"itables>=2.9.1",
+	"matplotlib>=3.11.2",
+	"numpy>=2.5.3",
+	"pandas>=3.0.6",
+	"pandera>=0.33.1",
+	"plotly>=7.1.0",
+	"scikit-learn>=1.9.1",
+	"seaborn>=0.13.2",
+	"streamlit>=1.67.0",
+]
+
+# [project.scripts]
+# pak-anas = "pak_anas:main"
+
+# [build-system]
+# requires = ["uv_build>=0.12.20,<0.13.0"]
+# build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+	"pytest>=9.1.1",
+	"ruff>=0.16.10",
+	"ty>=0.0.84",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+preview = true
+src = ["src"]
+
+exclude = [
+    ".git-submodules",
+    ".cache",
+    ".ipynb_checkpoints",
+    "_build",
+    ".venv",
+]
+
+[tool.ruff.lint]
+select = ["ALL"]
+
+# ignore = [
+# 	"incorrect-blank-line-before-class",
+# 	"multi-line-summary-second-line",
+# 	"missing-trailing-comma",
+# 	"single-line-implicit-string-concatenation",
+# 	"tab-indentation",
+# 	"docstring-tab-indentation",
+# 	"docstring-missing-returns",
+# 	"missing-type-self",
+# 	"missing-type-cls",
+# 	"missing-todo-author",
+# 	"missing-todo-link",
+# 	"implicit-namespace-package",
+# 	"missing-copyright-notice",
+# 	"print",
+# 	"suspicious-non-cryptographic-random-usage",
+# ]
+ignore = [
+    "incorrect-blank-line-before-class",
+    "multi-line-summary-second-line",
+    # "missing-trailing-comma",
+    # "single-line-implicit-string-concatenation",
+    "tab-indentation",
+    "docstring-tab-indentation",
+    # "docstring-missing-returns",
+    # "missing-todo-author",
+    # "missing-todo-link",
+    # "implicit-namespace-package",
+    "missing-copyright-notice",
+    # "print",
+    # "suspicious-non-cryptographic-random-usage",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+	"assert",
+	"ANN",
+]
+
+[tool.ruff.lint.isort]
+# known-first-party = ["pak_anas"]
+combine-as-imports = true
+split-on-trailing-comma = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+line-ending = "lf"
+skip-magic-trailing-comma = false
+docstring-code-format = true
+docstring-code-line-length = 80
+preview = true
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.rules]
+dynamic-function-decorator-return = "error"
+missing-type-argument = "error"
+possibly-unresolved-reference = "error"
+unsound-return-statement = "error"
+division-by-zero = "error"
+call-non-callable = "error"
+conflicting-declarations = "error"
+conflicting-metaclass = "error"
+dataclass-field-order = "error"
+deprecated = "error"
+ambiguous-protocol-member = "error"
+blanket-ignore-comment = "error"
+unresolved-import = "warn"
+unresolved-attribute = "warn"
+
+[tool.ty.analysis]
+strict-equality-semantics = true
+strict-generic-narrowing = true
+respect-type-ignore-comments = true

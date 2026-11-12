@@ -1,0 +1,83 @@
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    # ── Core correctness ──────────────────────────────────────────────
+    "E",       # pycodestyle
+    "F",       # Pyflakes
+
+    # ── Python modernization ─────────────────────────────────────────
+    "UP",      # pyupgrade
+
+    # ── Ruff-native correctness / quality ────────────────────────────
+    "RUF",     # Ruff-specific rules
+
+    # ── Bug detection ─────────────────────────────────────────────────
+    "B",       # flake8-bugbear
+    "A",       # flake8-builtins
+    "C4",      # flake8-comprehensions
+    "PIE",     # flake8-pie
+    "RET",     # flake8-return
+    "SIM",     # flake8-simplify
+
+    # ── Imports ────────────────────────────────────────────────────────
+    "I",       # isort
+
+    # ── Logging / debugging ───────────────────────────────────────────
+    "G",       # flake8-logging-format
+    "T10",     # flake8-debugger
+    "T20",     # flake8-print
+
+    # ── Exceptions ────────────────────────────────────────────────────
+    "BLE",     # flake8-blind-except
+    "TRY",     # tryceratops
+
+    # ── Security ──────────────────────────────────────────────────────
+    "S",       # flake8-bandit
+
+    # ── Path / filesystem quality ─────────────────────────────────────
+    "PTH",     # flake8-use-pathlib
+
+    # ── Datetime correctness ──────────────────────────────────────────
+    "DTZ",     # flake8-datetimez
+
+    # ── Type annotations ──────────────────────────────────────────────
+    "ANN",     # flake8-annotations
+
+    # ── Naming / API hygiene ──────────────────────────────────────────
+    "N",       # pep8-naming
+
+    # ── Modern typing / stub hygiene ──────────────────────────────────
+    "PYI",     # flake8-pyi
+
+    # ── Explicit TODO / FIXME discipline ──────────────────────────────
+    "TD",      # flake8-todos
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101",
+    "ANN",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "tab"
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.rules]
+# Treat dynamically typed function decorator returns as errors.
+dynamic-function-decorator-return = "error"
+
+# Require explicit type arguments for generic types.
+missing-type-argument = "error"
+
+# Surface references that may not actually resolve.
+possibly-unresolved-reference = "warn"
+
+# Reject return statements that are not sound under static analysis.
+unsound-return-statement = "error"

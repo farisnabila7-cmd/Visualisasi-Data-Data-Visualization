@@ -1,0 +1,49 @@
+| Bagian lama                                    | Keputusan                | Alasan                                                           |
+| ---------------------------------------------- | ------------------------ | ---------------------------------------------------------------- |
+| `[build-system]` setuptools                    | **BUANG**                | Anda belum membuat package/distribution Python                   |
+| `[project]`                                    | **BUANG untuk sekarang** | Ini proyek data tooling/script, bukan package yang akan di-build |
+| `dependencies`                                 | **BUANG**                | Pandas/NumPy/Polars sudah dimiliki MSYS2 `pacman`, bukan pip     |
+| `[project.scripts]`                            | **BUANG**                | Tidak ada CLI package yang sedang dibuat                         |
+| `[project.urls]`                               | **BUANG**                | Belum ada package/repository metadata yang perlu dipublikasikan  |
+| `[project.optional-dependencies]`              | **BUANG**                | Tidak ingin dependency manager/pip stack tambahan                |
+| `[tool.setuptools]`                            | **BUANG**                | Tidak menggunakan setuptools sebagai build backend               |
+| `[tool.pdm.scripts]`                           | **BUANG**                | Anda tidak menggunakan PDM                                       |
+| `codespell`                                    | **BUANG**                | Tidak diperlukan untuk baseline data tooling                     |
+| `black`                                        | **BUANG**                | Ruff sudah memiliki formatter                                    |
+| `isort`                                        | **BUANG**                | Ruff menangani import sorting                                    |
+| `mypy`                                         | **BUANG**                | Anda memilih `ty`                                                |
+| `pytest`                                       | **BUANG untuk sekarang** | Belum ada test suite                                             |
+| `coverage`                                     | **BUANG**                | Belum ada test suite                                             |
+| `vulture`                                      | **BUANG**                | Belum diperlukan                                                 |
+| `pipdeptree`                                   | **BUANG**                | Tidak cocok dengan desain dependency MSYS2 Anda                  |
+| Ruff konfigurasi lama `[tool.ruff] select=...` | **DIGANTI**              | Struktur konfigurasi Ruff modern memakai `[tool.ruff.lint]`      |
+| `line-length = 99`                             | **BUANG**                | Kembali ke default Ruff 88; jangan override tanpa kebutuhan      |
+| daftar `ignore` yang panjang                   | **BUANG**                | Jangan mulai proyek dengan puluhan pengecualian                  |
+| ty                                             | **TAMBAH**               | Type checking                                                    |
+| Ruff formatter                                 | **TAMBAH**               | Formatting                                                       |
+| Ruff lint                                      | **TAMBAH**               | Static lint                                                      |
+| strict-ish ty rules                            | **TAMBAH TERBATAS**      | Untuk mendekati pemeriksaan ketat tanpa `all=error`              |
+
+(.venv) ( UCRT64 )faris@nabila:~/projects/python/pandas/Pak_Anas$ .venv/bin/python.exe -c 'import sys, site; print("exe:", sys.executable); print("prefix:", sys.prefix); print("base:", sys.base_prefix); print("site:", site.getsitepackages()); print("user:", site.getusersitepackages())'
+exe: C:/msys64/home/faris/projects/python/pandas/Pak_Anas/.venv/bin/python.exe
+prefix: C:/msys64/home/faris/projects/python/pandas/Pak_Anas/.venv
+base: C:/msys64/ucrt64
+site: ['C:/msys64/home/faris/projects/python/pandas/Pak_Anas/.venv/lib/python3.14/site-packages', 'C:/msys64/ucrt64/lib/python3.14/site-packages']
+user: C:/Users/faris/.local/lib/python3.14-mingw_x86_64_ucrt_gnu/site-packages
+(.venv) ( UCRT64 )faris@nabila:~/projects/python/pandas/Pak_Anas$ .venv/bin/python.exe -c 'import sys; print(*sys.path, sep="\n")'
+
+C:/msys64/ucrt64/lib/python314.zip
+C:/msys64/ucrt64/lib/python3.14
+C:/msys64/ucrt64/lib/python3.14/lib-dynload
+C:/msys64/home/faris/projects/python/pandas/Pak_Anas/.venv/lib/python3.14/site-packages
+C:/msys64/ucrt64/lib/python3.14/site-packages
+(.venv) ( UCRT64 )faris@nabila:~/projects/python/pandas/Pak_Anas$
+
+
+Ini untuk validate hasil toml pada pyproject.toml
+    pip install validate-pyproject
+
+
+Run
+    ruff check src/*.py
+    ty check src/*.py

@@ -1,0 +1,20 @@
+(.venv) ( UCRT64 )faris@nabila:~/projects/python/pandas/Pak_Anas$ pacman -Q | grep -E '^(mingw-w64-ucrt-x86_64-(python|python-pandas|python-polars|python-ruff|python-ty|python-pip-audit|python-itables))'
+mingw-w64-ucrt-x86_64-python 3.14.7-1
+mingw-w64-ucrt-x86_64-python-dateutil 2.9.0.post0-4
+mingw-w64-ucrt-x86_64-python-distlib 0.4.3-1
+mingw-w64-ucrt-x86_64-python-numpy 2.5.2-1
+mingw-w64-ucrt-x86_64-python-packaging 26.3-1
+mingw-w64-ucrt-x86_64-python-pandas 3.0.5-1
+mingw-w64-ucrt-x86_64-python-pip 26.2.1-1
+mingw-w64-ucrt-x86_64-python-polars 1.44.1-1
+mingw-w64-ucrt-x86_64-python-polars-runtime-32 1.44.1-1
+mingw-w64-ucrt-x86_64-python-pytz 2026.3.post1-1
+mingw-w64-ucrt-x86_64-python-setuptools 83.0.0-2
+mingw-w64-ucrt-x86_64-python-six 1.17.0-3
+mingw-w64-ucrt-x86_64-python-tzdata 2026.3-1
+
+(.venv) ( UCRT64 )faris@nabila:~/projects/python/pandas/Pak_Anas$ ls /ucrt64/bin/python*
+󰡯 C:/msys64/ucrt64/bin\python-config    C:/msys64/ucrt64/bin\python3.14-config   C:/msys64/ucrt64/bin\python3.exe
+ C:/msys64/ucrt64/bin\python.exe       C:/msys64/ucrt64/bin\python3.14.exe      C:/msys64/ucrt64/bin\python3w.exe
+󰡯 C:/msys64/ucrt64/bin\python3-config   C:/msys64/ucrt64/bin\python3.14w.exe     C:/msys64/ucrt64/bin\pythonw.exe
+(.venv) ( UCRT64 )faris@nabila:~/projects/python/pandas/Pak_Anas$
